@@ -1,5 +1,6 @@
 FROM node:20.11-alpine3.18 as build
 
+# Install required dependencies
 RUN apk update && apk upgrade && apk add --no-cache \
     bash \
     openssh \
@@ -10,50 +11,40 @@ RUN apk update && apk upgrade && apk add --no-cache \
     musl-locales \
     musl-locales-lang
 
-# Set up locale (Alpine does not use `localedef` like Debian)
+# Set up locale
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 ENV LANGUAGE=en_US.UTF-8
 
-# Set environment variables
+# Define environment variables
 ARG Ngrok
 ARG PDS_ADMIN_PASSWORD
-ARG re
 ENV re=us
 ENV PDS_ADMIN_PASSWORD=${PDS_ADMIN_PASSWORD}
 ENV Ngrok=${Ngrok}
-
-RUN echo "Ngrok token: ${Ngrok}"
-RUN echo "Region: ${re}"
-RUN echo "Region: ${PDS_ADMIN_PASSWORD}"
 
 # Download and configure ngrok
 RUN wget -q -O ngrok.zip https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.zip && \
     unzip ngrok.zip && rm ngrok.zip && chmod +x ./ngrok
 
-# Create script
-RUN echo '#!/bin/bash' > /1.sh && \
-    echo './ngrok config add-authtoken ${Ngrok}' >> /1.sh && \
-    echo './ngrok tcp 22 --region ${re} &>> /ngrok.log &' >> /1.sh && \
-    echo '/usr/sbin/sshd -D' >> /1.sh && \
-    chmod +x /1.sh
-
+# Create startup script
+RUN echo '#!/bin/bash' > /entrypoint.sh && \
+    echo './ngrok config add-authtoken $Ngrok' >> /entrypoint.sh && \
+    echo './ngrok tcp 22 --region $re &>> /ngrok.log &' >> /entrypoint.sh && \
+    echo '/usr/sbin/sshd -D' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
 # Configure SSH
 RUN mkdir -p /run/sshd
-RUN echo '/usr/sbin/sshd -D' >>/1.sh
 RUN echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
 RUN echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config
 RUN echo "root:${PDS_ADMIN_PASSWORD}" | chpasswd
 
-# Ensure script is executable
-RUN chmod 755 /1.sh
-
 # Expose ports
-EXPOSE 80 8888 8080 443 5130 5131 5132 5133 5134 5135 3306
+EXPOSE 22
 
-# Run the script
-CMD ["/bin/bash", "/1.sh"]
+# Start services
+CMD ["/bin/bash", "/entrypoint.sh"]
 
 RUN npm install -g pnpm
 
