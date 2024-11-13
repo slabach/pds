@@ -2,36 +2,50 @@
 set -e
 
 # Define user account details
-EMAIL="${PDS_ADMIN_EMAIL:-admin@perfectfall.com}" # Default if env not set
-HANDLE="${PDS_ADMIN_HANDLE:-perfectfall.com}"     # Default if env not set
+EMAIL="${PDS_ADMIN_EMAIL:-admin@perfectfall.com}" # Default if not set
+HANDLE="${PDS_ADMIN_HANDLE:-perfectfall.com}"     # Default if not set
 PASSWORD="${PDS_ADMIN_PASSWORD}"
 
-# Check for required environment variables
+# Verify required variables
 if [[ -z "$PASSWORD" ]]; then
     echo "Error: PDS_ADMIN_PASSWORD is not set."
     exit 1
 fi
+if [[ -z "$PDS_HOSTNAME" ]]; then
+    echo "Error: PDS_HOSTNAME is not set."
+    exit 1
+fi
 
-# Function to create user account
+# Create user account
 create_account() {
     echo "Creating user account..."
     pdsadmin account create "$EMAIL" "$HANDLE"
-    echo "User account created."
+    echo "User account created. Fetching DID..."
+    DID=$(pdsadmin account list | grep "$HANDLE" | awk '{print $3}')
+    if [[ -z "$DID" || "$DID" != did:* ]]; then
+        echo "Error: Failed to fetch DID for the created account."
+        exit 1
+    fi
+    echo "DID fetched: $DID"
+    reset_password
 }
 
-# Function to set user password
-set_password() {
-    echo "Setting password for user..."
-    echo "$PASSWORD" | pdsadmin set-password "$HANDLE"
-    echo "Password set successfully."
+# Reset user password
+reset_password() {
+    echo "Resetting password for user DID: $DID..."
+    curl --fail --silent --show-error --request POST \
+        --user "admin:${PDS_ADMIN_PASSWORD}" \
+        --header "Content-Type: application/json" \
+        --data "{\"did\": \"${DID}\", \"password\": \"${PASSWORD}\"}" \
+        "https://${PDS_HOSTNAME}/xrpc/com.atproto.admin.updateAccountPassword" >/dev/null
+    echo "Password reset successfully."
 }
 
-# Check if the account already exists
+# Check if account exists
 if pdsadmin account list | grep -q "$HANDLE"; then
     echo "User account already exists."
 else
     create_account
-    set_password
 fi
 
 # Start the application
