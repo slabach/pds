@@ -1,53 +1,6 @@
 # Base image with Node.js and Alpine Linux
 FROM node:20.11-alpine3.18 as build
 
-# Install necessary packages
-RUN apk update && apk upgrade && apk add --no-cache \
-    bash \
-    openssh \
-    wget \
-    unzip \
-    libc6-compat \
-    ca-certificates \
-    musl-locales \
-    musl-locales-lang
-
-# Set up locale (Alpine doesn't use localedef like Debian)
-ENV LANG=en_US.UTF-8
-ENV LC_ALL=en_US.UTF-8
-ENV LANGUAGE=en_US.UTF-8
-
-# Define environment variables
-ARG PDS_ADMIN_PASSWORD
-ENV PDS_ADMIN_PASSWORD=${PDS_ADMIN_PASSWORD}
-
-# Create an entrypoint script
-RUN echo '#!/bin/bash' > /entrypoint.sh && \
-    echo 'echo "Starting gotty for web terminal access..."' >> /entrypoint.sh && \
-    echo 'gotty -w --port 3000 bash >> /gotty.log 2>&1 &' >> /entrypoint.sh && \
-    echo 'echo "Starting SSH daemon..."' >> /entrypoint.sh && \
-    echo '/usr/sbin/sshd -D' >> /entrypoint.sh && \
-    chmod +x /entrypoint.sh
-
-# Install gotty for web-based terminal access
-RUN wget -q -O gotty.tar.gz https://github.com/yudai/gotty/releases/download/v1.0.1/gotty_linux_amd64.tar.gz && \
-    tar -xzf gotty.tar.gz -C /usr/local/bin && \
-    rm gotty.tar.gz && \
-    chmod +x /usr/local/bin/gotty
-
-# Configure SSH
-RUN mkdir -p /run/sshd && \
-    echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config && \
-    echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config && \
-    echo "root:${PDS_ADMIN_PASSWORD}" | chpasswd
-
-# Expose necessary ports
-EXPOSE 22
-EXPOSE 3000 # Port for gotty
-
-# Default command to execute the entrypoint script
-CMD ["/bin/bash", "/entrypoint.sh"]
-
 # Additional setup for pnpm and application code
 RUN npm install -g pnpm
 WORKDIR /app
@@ -63,10 +16,14 @@ RUN apk add --update dumb-init bash curl openssl jq util-linux && \
   chmod +x /usr/local/bin/pdsadmin
 
 # Avoid zombie processes and handle signal forwarding
-ENTRYPOINT ["dumb-init", "--"]
+ENTRYPOINT ["dumb-init", "--", "/app/entrypoint.sh"]
 
 WORKDIR /app
 COPY --from=build /app /app
+
+# Add setup script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # Expose the application port
 EXPOSE 3000
@@ -81,3 +38,38 @@ CMD ["node", "--enable-source-maps", "index.js"]
 LABEL org.opencontainers.image.source=https://github.com/bluesky-social/pds
 LABEL org.opencontainers.image.description="AT Protocol PDS"
 LABEL org.opencontainers.image.licenses=MIT
+
+ENV PDS_ADMIN_EMAIL=admin@perfectfall.com
+ENV PDS_HANDLE=perfectfall.com
+ENV PDS_ADMIN_PASSWORD="${PDS_ADMIN_PASSWORD}"
+
+# entrypoint.sh script
+# entrypoint.sh script
+RUN echo "#!/bin/bash\n" > /app/entrypoint.sh && \
+    echo "set -e\n" >> /app/entrypoint.sh && \
+    echo "# Define user account details\n" >> /app/entrypoint.sh && \
+    echo "EMAIL=\"\$PDS_ADMIN_EMAIL\"\n" >> /app/entrypoint.sh && \
+    echo "HANDLE=\"\$PDS_ADMIN_HANDLE\"\n" >> /app/entrypoint.sh && \
+    echo "PASSWORD=\"\$PDS_ADMIN_PASSWORD\"\n" >> /app/entrypoint.sh && \
+    echo "# Function to create user account\n" >> /app/entrypoint.sh && \
+    echo "create_account() {\n" >> /app/entrypoint.sh && \
+    echo "  echo \"Creating user account...\"\n" >> /app/entrypoint.sh && \
+    echo "  pdsadmin account create \"\$EMAIL\" \"\$HANDLE\"\n" >> /app/entrypoint.sh && \
+    echo "  echo \"User account created.\"\n" >> /app/entrypoint.sh && \
+    echo "}\n" >> /app/entrypoint.sh && \
+    echo "# Function to set user password\n" >> /app/entrypoint.sh && \
+    echo "set_password() {\n" >> /app/entrypoint.sh && \
+    echo "  echo \"Setting password for user...\"\n" >> /app/entrypoint.sh && \
+    echo "  echo \"\$PASSWORD\" | pdsadmin set-password \"\$HANDLE\"\n" >> /app/entrypoint.sh && \
+    echo "  echo \"Password set successfully.\"\n" >> /app/entrypoint.sh && \
+    echo "}\n" >> /app/entrypoint.sh && \
+    echo "# Check if the account already exists\n" >> /app/entrypoint.sh && \
+    echo "if pdsadmin account list | grep -q \"\$HANDLE\"; then\n" >> /app/entrypoint.sh && \
+    echo "  echo \"User account already exists.\"\n" >> /app/entrypoint.sh && \
+    echo "else\n" >> /app/entrypoint.sh && \
+    echo "  create_account\n" >> /app/entrypoint.sh && \
+    echo "  set_password\n" >> /app/entrypoint.sh && \
+    echo "fi\n" >> /app/entrypoint.sh && \
+    echo "# Start the application\n" >> /app/entrypoint.sh && \
+    echo "exec \"\$@\"\n" >> /app/entrypoint.sh
+
