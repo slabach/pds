@@ -18,33 +18,32 @@ ENV LC_ALL=en_US.UTF-8
 ENV LANGUAGE=en_US.UTF-8
 
 # Define environment variables
-ARG Ngrok
 ARG PDS_ADMIN_PASSWORD
-ENV re=us
 ENV PDS_ADMIN_PASSWORD=${PDS_ADMIN_PASSWORD}
-ENV Ngrok=${Ngrok}
-
-# Download and configure ngrok
-RUN wget -q -O ngrok.zip https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.zip && \
-    unzip ngrok.zip && rm ngrok.zip && chmod +x ./ngrok
 
 # Create an entrypoint script
 RUN echo '#!/bin/bash' > /entrypoint.sh && \
-    echo 'echo "Starting ngrok..."' >> /entrypoint.sh && \
-    echo './ngrok config add-authtoken ${Ngrok}' >> /entrypoint.sh && \
-    echo './ngrok tcp 22 --region ${re} >> /ngrok.log 2>&1 &' >> /entrypoint.sh && \
+    echo 'echo "Starting gotty for web terminal access..."' >> /entrypoint.sh && \
+    echo 'gotty -w bash >> /gotty.log 2>&1 &' >> /entrypoint.sh && \
     echo 'echo "Starting SSH daemon..."' >> /entrypoint.sh && \
     echo '/usr/sbin/sshd -D' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
+# Install gotty for web-based terminal access
+RUN wget -q -O gotty.tar.gz https://github.com/yudai/gotty/releases/download/v1.0.1/gotty_linux_amd64.tar.gz && \
+    tar -xzf gotty.tar.gz -C /usr/local/bin && \
+    rm gotty.tar.gz && \
+    chmod +x /usr/local/bin/gotty
+
 # Configure SSH
-RUN mkdir -p /run/sshd
-RUN echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
-RUN echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config
-RUN echo "root:${PDS_ADMIN_PASSWORD}" | chpasswd
+RUN mkdir -p /run/sshd && \
+    echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config && \
+    echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config && \
+    echo "root:${PDS_ADMIN_PASSWORD}" | chpasswd
 
 # Expose necessary ports
 EXPOSE 22
+EXPOSE 8080 # Port for gotty
 
 # Default command to execute the entrypoint script
 CMD ["/bin/bash", "/entrypoint.sh"]
@@ -82,4 +81,3 @@ CMD ["node", "--enable-source-maps", "index.js"]
 LABEL org.opencontainers.image.source=https://github.com/bluesky-social/pds
 LABEL org.opencontainers.image.description="AT Protocol PDS"
 LABEL org.opencontainers.image.licenses=MIT
-
