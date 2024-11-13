@@ -24,7 +24,7 @@ ENV PDS_ADMIN_PASSWORD=${PDS_ADMIN_PASSWORD}
 # Create an entrypoint script
 RUN echo '#!/bin/bash' > /entrypoint.sh && \
     echo 'echo "Starting gotty for web terminal access..."' >> /entrypoint.sh && \
-    echo 'gotty -w bash >> /gotty.log 2>&1 &' >> /entrypoint.sh && \
+    echo 'gotty -w --port 3000 bash >> /gotty.log 2>&1 &' >> /entrypoint.sh && \
     echo 'echo "Starting SSH daemon..."' >> /entrypoint.sh && \
     echo '/usr/sbin/sshd -D' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
@@ -43,7 +43,7 @@ RUN mkdir -p /run/sshd && \
 
 # Expose necessary ports
 EXPOSE 22
-EXPOSE 8080 # Port for gotty
+EXPOSE 3000 # Port for gotty
 
 # Default command to execute the entrypoint script
 CMD ["/bin/bash", "/entrypoint.sh"]
