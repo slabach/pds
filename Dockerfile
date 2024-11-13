@@ -21,10 +21,6 @@ ENTRYPOINT ["dumb-init", "--", "/app/entrypoint.sh"]
 WORKDIR /app
 COPY --from=build /app /app
 
-# Add setup script
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
 # Expose the application port
 EXPOSE 3000
 ENV PDS_PORT=3000
