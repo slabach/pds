@@ -1,8 +1,18 @@
 #!/bin/bash
 set -e
 
-# Load the pds.env file from a writable location
-PDS_ENV_FILE="/app/config/pds.env"
+# Ensure /pds directory exists
+mkdir -p /pds
+
+# Dynamically create /pds/pds.env from environment variables
+cat <<EOF > /pds/pds.env
+PDS_HOSTNAME=${PDS_HOSTNAME}
+PDS_ADMIN_PASSWORD=${PDS_ADMIN_PASSWORD}
+EOF
+echo "/pds/pds.env file created with necessary variables."
+
+# Load the pds.env file
+PDS_ENV_FILE="/pds/pds.env"
 if [[ -f "$PDS_ENV_FILE" ]]; then
     source "$PDS_ENV_FILE"
 else
