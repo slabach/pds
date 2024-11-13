@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Define user account details
+# Define user account details from environment variables
 EMAIL="${PDS_ADMIN_EMAIL:-admin@perfectfall.com}" # Default if not set
 HANDLE="${PDS_ADMIN_HANDLE:-perfectfall.com}"     # Default if not set
 PASSWORD="${PDS_ADMIN_PASSWORD}"
