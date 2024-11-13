@@ -1,29 +1,51 @@
 FROM node:20.11-alpine3.18 as build
 
-RUN npm install -g pnpm
-RUN apt update -y > /dev/null 2>&1 && apt upgrade -y > /dev/null 2>&1 && apt install locales -y \
-&& localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
-ENV LANG en_US.utf8
+RUN apk update && apk upgrade && apk add --no-cache \
+    bash \
+    openssh \
+    wget \
+    unzip \
+    libc6-compat \
+    ca-certificates \
+    musl-locales \
+    musl-locales-lang
+
+# Set up locale (Alpine does not use `localedef` like Debian)
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+ENV LANGUAGE=en_US.UTF-8
+
+# Set environment variables
 ARG Ngrok
 ARG PDS_ADMIN_PASSWORD
 ARG re
 ENV re=${re}
 ENV PDS_ADMIN_PASSWORD=${PDS_ADMIN_PASSWORD}
 ENV Ngrok=${Ngrok}
-RUN apt install ssh wget unzip -y > /dev/null 2>&1
-RUN wget -O ngrok.zip https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.zip > /dev/null 2>&1
-RUN unzip ngrok.zip
+
+# Download and configure ngrok
+RUN wget -q -O ngrok.zip https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.zip
+RUN unzip ngrok.zip && rm ngrok.zip
 RUN echo "./ngrok config add-authtoken ${Ngrok} &&" >>/1.sh
 RUN echo "./ngrok tcp 22 --region ${re} &>/dev/null &" >>/1.sh
-RUN mkdir /run/sshd
+
+# Configure SSH
+RUN mkdir -p /run/sshd
 RUN echo '/usr/sbin/sshd -D' >>/1.sh
-RUN echo 'PermitRootLogin yes' >>  /etc/ssh/sshd_config
-RUN echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
-RUN echo root:${PDS_ADMIN_PASSWORD}|chpasswd
-RUN service ssh start
+RUN echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
+RUN echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config
+RUN echo "root:${PDS_ADMIN_PASSWORD}" | chpasswd
+
+# Ensure script is executable
 RUN chmod 755 /1.sh
+
+# Expose ports
 EXPOSE 80 8888 8080 443 5130 5131 5132 5133 5134 5135 3306
-CMD  /1.sh
+
+# Run the script
+CMD ["/bin/bash", "/1.sh"]
+
+RUN npm install -g pnpm
 
 # Move files into the image and install
 WORKDIR /app
