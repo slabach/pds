@@ -38,9 +38,9 @@ fi
 # Create user account
 create_account() {
     echo "Creating user account..."
-    pdsadmin account create "$EMAIL" "$HANDLE"
+    ./pdsadmin.sh account create "$EMAIL" "$HANDLE"
     echo "User account created. Fetching DID..."
-    DID=$(pdsadmin account list | grep "$HANDLE" | awk '{print $3}')
+    DID=$(./pdsadmin.sh account list | grep "$HANDLE" | awk '{print $3}')
     if [[ -z "$DID" || "$DID" != did:* ]]; then
         echo "Error: Failed to fetch DID for the created account."
         exit 1
@@ -61,7 +61,7 @@ reset_password() {
 }
 
 # Check if account exists
-if pdsadmin account list | grep -q "$HANDLE"; then
+if ./pdsadmin.sh account list | grep -q "$HANDLE"; then
     echo "User account already exists."
 else
     create_account
