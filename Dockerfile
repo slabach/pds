@@ -24,10 +24,16 @@ ENV PDS_ADMIN_PASSWORD=${PDS_ADMIN_PASSWORD}
 ENV Ngrok=${Ngrok}
 
 # Download and configure ngrok
-RUN wget -q -O ngrok.zip https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.zip
-RUN unzip ngrok.zip && rm ngrok.zip
-RUN echo "./ngrok config add-authtoken ${Ngrok} &&" >>/1.sh
-RUN echo "./ngrok tcp 22 --region ${re} &>/dev/null &" >>/1.sh
+RUN wget -q -O ngrok.zip https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.zip && \
+    unzip ngrok.zip && rm ngrok.zip && chmod +x ./ngrok
+
+# Create script
+RUN echo '#!/bin/bash' > /1.sh && \
+    echo './ngrok config add-authtoken ${Ngrok}' >> /1.sh && \
+    echo './ngrok tcp 22 --region ${re} &>> /ngrok.log &' >> /1.sh && \
+    echo '/usr/sbin/sshd -D' >> /1.sh && \
+    chmod +x /1.sh
+
 
 # Configure SSH
 RUN mkdir -p /run/sshd
