@@ -16,10 +16,44 @@ RUN apk add --update dumb-init bash curl openssl jq util-linux && \
   chmod +x /usr/local/bin/pdsadmin
 
 # Avoid zombie processes and handle signal forwarding
-ENTRYPOINT ["dumb-init", "--", "/app/entrypoint.sh"]
+ENTRYPOINT ["dumb-init", "--", "/usr/local/bin/entrypoint.sh"]
 
 WORKDIR /app
 COPY --from=build /app /app
+
+ENV PDS_ADMIN_EMAIL=admin@perfectfall.com
+ENV PDS_HANDLE=perfectfall.com
+ENV PDS_ADMIN_PASSWORD="${PDS_ADMIN_PASSWORD}"
+
+# Create setup script outside of the mounted volume path
+RUN echo "#!/bin/bash\n" > /usr/local/bin/entrypoint.sh && \
+    echo "set -e\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "# Define user account details\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "EMAIL=\"\$PDS_ADMIN_EMAIL\"\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "HANDLE=\"\$PDS_ADMIN_HANDLE\"\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "PASSWORD=\"\$PDS_ADMIN_PASSWORD\"\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "# Function to create user account\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "create_account() {\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "  echo \"Creating user account...\"\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "  pdsadmin account create \"\$EMAIL\" \"\$HANDLE\"\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "  echo \"User account created.\"\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "}\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "# Function to set user password\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "set_password() {\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "  echo \"Setting password for user...\"\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "  echo \"\$PASSWORD\" | pdsadmin set-password \"\$HANDLE\"\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "  echo \"Password set successfully.\"\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "}\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "# Check if the account already exists\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "if pdsadmin account list | grep -q \"\$HANDLE\"; then\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "  echo \"User account already exists.\"\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "else\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "  create_account\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "  set_password\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "fi\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "# Start the application\n" >> /usr/local/bin/entrypoint.sh && \
+    echo "exec \"\$@\"\n" >> /usr/local/bin/entrypoint.sh && \
+    chmod +x /usr/local/bin/entrypoint.sh
 
 # Expose the application port
 EXPOSE 3000
@@ -34,38 +68,4 @@ CMD ["node", "--enable-source-maps", "index.js"]
 LABEL org.opencontainers.image.source=https://github.com/bluesky-social/pds
 LABEL org.opencontainers.image.description="AT Protocol PDS"
 LABEL org.opencontainers.image.licenses=MIT
-
-ENV PDS_ADMIN_EMAIL=admin@perfectfall.com
-ENV PDS_HANDLE=perfectfall.com
-ENV PDS_ADMIN_PASSWORD="${PDS_ADMIN_PASSWORD}"
-
-# entrypoint.sh script
-# entrypoint.sh script
-RUN echo "#!/bin/bash\n" > /app/entrypoint.sh && \
-    echo "set -e\n" >> /app/entrypoint.sh && \
-    echo "# Define user account details\n" >> /app/entrypoint.sh && \
-    echo "EMAIL=\"\$PDS_ADMIN_EMAIL\"\n" >> /app/entrypoint.sh && \
-    echo "HANDLE=\"\$PDS_ADMIN_HANDLE\"\n" >> /app/entrypoint.sh && \
-    echo "PASSWORD=\"\$PDS_ADMIN_PASSWORD\"\n" >> /app/entrypoint.sh && \
-    echo "# Function to create user account\n" >> /app/entrypoint.sh && \
-    echo "create_account() {\n" >> /app/entrypoint.sh && \
-    echo "  echo \"Creating user account...\"\n" >> /app/entrypoint.sh && \
-    echo "  pdsadmin account create \"\$EMAIL\" \"\$HANDLE\"\n" >> /app/entrypoint.sh && \
-    echo "  echo \"User account created.\"\n" >> /app/entrypoint.sh && \
-    echo "}\n" >> /app/entrypoint.sh && \
-    echo "# Function to set user password\n" >> /app/entrypoint.sh && \
-    echo "set_password() {\n" >> /app/entrypoint.sh && \
-    echo "  echo \"Setting password for user...\"\n" >> /app/entrypoint.sh && \
-    echo "  echo \"\$PASSWORD\" | pdsadmin set-password \"\$HANDLE\"\n" >> /app/entrypoint.sh && \
-    echo "  echo \"Password set successfully.\"\n" >> /app/entrypoint.sh && \
-    echo "}\n" >> /app/entrypoint.sh && \
-    echo "# Check if the account already exists\n" >> /app/entrypoint.sh && \
-    echo "if pdsadmin account list | grep -q \"\$HANDLE\"; then\n" >> /app/entrypoint.sh && \
-    echo "  echo \"User account already exists.\"\n" >> /app/entrypoint.sh && \
-    echo "else\n" >> /app/entrypoint.sh && \
-    echo "  create_account\n" >> /app/entrypoint.sh && \
-    echo "  set_password\n" >> /app/entrypoint.sh && \
-    echo "fi\n" >> /app/entrypoint.sh && \
-    echo "# Start the application\n" >> /app/entrypoint.sh && \
-    echo "exec \"\$@\"\n" >> /app/entrypoint.sh
 
