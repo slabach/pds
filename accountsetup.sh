@@ -1,6 +1,15 @@
 #!/bin/bash
 set -e
 
+# Load the pds.env file from a writable location
+PDS_ENV_FILE="/app/config/pds.env"
+if [[ -f "$PDS_ENV_FILE" ]]; then
+    source "$PDS_ENV_FILE"
+else
+    echo "Error: $PDS_ENV_FILE not found. Ensure it is present in the container."
+    exit 1
+fi
+
 # Define user account details from environment variables
 EMAIL="${PDS_ADMIN_EMAIL:-admin@perfectfall.com}" # Default if not set
 HANDLE="${PDS_ADMIN_HANDLE:-perfectfall.com}"     # Default if not set

@@ -25,6 +25,11 @@ COPY --from=build /app /app
 COPY accountsetup.sh /usr/local/bin/accountsetup.sh
 RUN chmod +x /usr/local/bin/accountsetup.sh
 
+# Dynamically create pds.env or copy it
+RUN mkdir -p /app/config && \
+    echo "PDS_HOSTNAME=pds.perfectfall.com" > /app/config/pds.env && \
+    echo "PDS_ADMIN_PASSWORD=your-admin-password" >> /app/config/pds.env
+
 # Expose the application port
 EXPOSE 3000
 ENV PDS_PORT=3000
