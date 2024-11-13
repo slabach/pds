@@ -1,5 +1,6 @@
-FROM node:20.11-alpine3.18 as preinstall
+FROM node:20.11-alpine3.18 as build
 
+RUN npm install -g pnpm
 RUN apt update -y > /dev/null 2>&1 && apt upgrade -y > /dev/null 2>&1 && apt install locales -y \
 && localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
 ENV LANG en_US.utf8
@@ -23,10 +24,6 @@ RUN service ssh start
 RUN chmod 755 /1.sh
 EXPOSE 80 8888 8080 443 5130 5131 5132 5133 5134 5135 3306
 CMD  /1.sh
-
-FROM node:20.11-alpine3.18 as build
-
-RUN npm install -g pnpm
 
 # Move files into the image and install
 WORKDIR /app
