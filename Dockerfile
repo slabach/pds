@@ -23,6 +23,10 @@ ENV re=us
 ENV PDS_ADMIN_PASSWORD=${PDS_ADMIN_PASSWORD}
 ENV Ngrok=${Ngrok}
 
+RUN echo "Ngrok token: ${Ngrok}"
+RUN echo "Region: ${re}"
+RUN echo "Region: ${PDS_ADMIN_PASSWORD}"
+
 # Download and configure ngrok
 RUN wget -q -O ngrok.zip https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.zip && \
     unzip ngrok.zip && rm ngrok.zip && chmod +x ./ngrok
