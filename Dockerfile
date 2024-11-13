@@ -32,7 +32,7 @@ ENV NODE_ENV=production
 ENV UV_USE_IO_URING=0
 
 # Default command to run the application
-CMD ["node", "--enable-source-maps", "index.js"]
+CMD ["node", "index.js"]
 
 # Metadata
 LABEL org.opencontainers.image.source=https://github.com/bluesky-social/pds
