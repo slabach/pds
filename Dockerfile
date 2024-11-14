@@ -16,7 +16,8 @@ RUN apk add --update dumb-init bash curl openssl jq util-linux && \
     chmod +x /usr/local/bin/pdsadmin
 
 # Avoid zombie processes and handle signal forwarding
-ENTRYPOINT ["dumb-init", "--", "/usr/local/bin/accountsetup.sh"]
+ENTRYPOINT ["dumb-init", "--"]
+
 
 WORKDIR /app
 COPY --from=build /app /app
@@ -32,7 +33,7 @@ ENV NODE_ENV=production
 ENV UV_USE_IO_URING=0
 
 # Default command to run the application
-CMD ["node", "index.js"]
+CMD ["sh", "-c", "node index.js & /usr/local/bin/accountsetup.sh"]
 
 # Metadata
 LABEL org.opencontainers.image.source=https://github.com/bluesky-social/pds

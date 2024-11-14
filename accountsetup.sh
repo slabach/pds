@@ -11,12 +11,19 @@ PDS_ADMIN_PASSWORD=${PDS_ADMIN_PASSWORD}
 EOF
 echo "/pds/pds.env file created with necessary variables."
 
-# Load the pds.env file
-PDS_ENV_FILE="/pds/pds.env"
-if [[ -f "$PDS_ENV_FILE" ]]; then
-    source "$PDS_ENV_FILE"
-else
-    echo "Error: $PDS_ENV_FILE not found. Ensure it is present in the container."
+# Wait for the PDS service to be ready
+echo "Waiting for PDS service at https://${PDS_HOSTNAME} to be ready..."
+for i in {1..30}; do
+    if curl --silent --fail "https://${PDS_HOSTNAME}/xrpc/com.atproto.server.describeServer" > /dev/null; then
+        echo "PDS service is ready."
+        break
+    fi
+    echo "PDS service not ready, retrying in 2 seconds... ($i/30)"
+    sleep 2
+done
+
+if ! curl --silent --fail "https://${PDS_HOSTNAME}/xrpc/com.atproto.server.describeServer" > /dev/null; then
+    echo "Error: PDS service did not become ready in time."
     exit 1
 fi
 
